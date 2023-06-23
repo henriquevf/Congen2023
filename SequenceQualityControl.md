@@ -1,3 +1,5 @@
+# Sequence and quality control
+
 Developed by: Henrique V. Figueiró
 
 Contact: henriquevf@gmail.com
@@ -8,11 +10,11 @@ Next-generation sequencing (NGS) is a powerful tool for genomics research. Howev
 
 In this tutorial, we will use FastQC for initial data quality check, AdapterRemoval for cleaning up the reads, and MultiQC for aggregating the results.
 
-**FastQC** provides a simple way to do some quality control checks on raw sequence data.
+**FastQC** provides a simple way to do some quality control checks on raw sequence data (https://www.bioinformatics.babraham.ac.uk/projects/fastqc/).
 
-**AdapterRemoval** searches for and removes remnant adapter sequences from High-Throughput Sequencing (HTS) data.
+**AdapterRemoval** searches for and removes remnant adapter sequences from High-Throughput Sequencing (HTS) data (https://adapterremoval.readthedocs.io/en/stable/).
 
-**MultiQC** is a reporting tool that can visualize data across multiple tools and samples, providing a high-level overview of your dataset.
+**MultiQC** is a reporting tool that can visualize data across multiple tools and samples, providing a high-level overview of your dataset (https://multiqc.info/).
 
 ## 1. Quality Control with FastQC
 
@@ -121,8 +123,10 @@ During the preparation stage of DNA sequencing, it is common practice to attach 
 
 You can run AdapterRemoval on paired-end data as follows:
 
+Change “SAMPLE_PREFIX” to the sample name your running
+
 ```
-AdapterRemoval --file1 /scratch/projects/hpc-workshop/clouded_leopard/raw_data/sample_1.fastq.gz --file2 /scratch/projects/hpc-workshop/clouded_leopard/raw_data/sample_2.fastq.gz --basename ~/clouded_leopard/fastq_trimmed/sample_prefix --trimns --trimqualities --collapse --gzip
+AdapterRemoval --file1 /scratch/projects/hpc-workshop/clouded_leopard/raw_data/SAMPLE_PREFIX_1.fastq.gz --file2 /scratch/projects/hpc-workshop/clouded_leopard/raw_data/SAMPLE_PREFIX_2.fastq.gz --basename ~/clouded_leopard/fastq_trimmed/SAMPLE_PREFIX --trimns --trimqualities --collapse --gzip
 
 ```
 
@@ -143,13 +147,15 @@ Here is an example on how to run it on the server:
 ```bash
 module load AdapterRemoval
 
-srun --cpus-per-task=40 --mem=80G --time=2:00:00 AdapterRemoval --file1 /scratch/projects/hpc-workshop/clouded_leopard/raw_data/NN114296_1.fastq.gz --file2 /scratch/projects/hpc-workshop/clouded_leopard/raw_data/NN114296_2.fastq.gz --basename ~/clouded_leopard/fastq_trimmed/NN114296 --trimns --trimqualities --collapse --gzip
+srun --cpus-per-task=40 --mem=80G --time=3:00:00 AdapterRemoval --file1 /scratch/projects/hpc-workshop/clouded_leopard/raw_data/SAMPLE_PREFIX_1.fastq.gz --file2 /scratch/projects/hpc-workshop/clouded_leopard/raw_data/SAMPLE_PREFIX_2.fastq.gz --basename ~/clouded_leopard/fastq_trimmed/SAMPLE_PREFIX --trimns --trimqualities --collapse --gzip
 ```
 
 Is advised to run fastqc again using the trimmed reads to compared with the raw data. The plots from fastqc should look better with less reads overall. 
 
 ```bash
-srun --cpus-per-task=1 --mem=2G --time=1:00:00 fastqc ~/clouded_leopard/fastq_trimmed/*.pair*.truncated.gz -o ~/clouded_leopard/fastqc_trimmed/
+module load FastQC
+
+srun --cpus-per-task=10 --mem=8G --time=4:00:00 fastqc /scratch/users/YOUR_USER/clouded_leopard/fastq_trimmed/*.pair*.truncated.gz -o ~/clouded_leopard/fastqc_trimmed/
 
 ```
 
@@ -159,16 +165,30 @@ MultiQC collates results across many samples into a single report. It's a very u
 
 MultiQC collects results from other bioinformatics tools and compiles them into a single report. It can be used with a variety of bioinformatics tools, and it's capable of dealing with the output from tools used for quality control, alignment, quantification, and more.
 
+To know all options the program has run the following command:
+
+```bash
+module load MultiQC
+
+multiqc --help
+```
+
 ### 3.1 Running MultiQC
 
 After running FastQC and AdapterRemoval, you can generate a report with MultiQC as follows:
 
 ```
-multiqc ~/clouded_leopard/fastqc_raw
-multiqc ~/clouded_leopard/fastqc_trimmed
+srun --cpus-per-task=1 --mem=4G --time=1:00:00 multiqc ~/clouded_leopard/fastqc_raw --outdir ~/clouded_leopard/ --filename clouded_leopard_raw
+srun --cpus-per-task=1 --mem=4G --time=1:00:00 multiqc ~/clouded_leopard/fastqc_trimmed --outdir ~/clouded_leopard/ --filename clouded_leopard_trimmed
 
 ```
 
 This command will search for all recognized report files in the current directory and compile them into a single HTML report.
+
+To copy the files to your machine use the following command
+
+```bash
+scp -r USERNAME@hpc-login.oakland.edu:~/clouded_leopard/clouded_leopard_raw.html /working/folder/on/laptop/
+```
 
 FastQC, AdapterRemoval, and MultiQC are powerful tools for the preprocessing and quality control of sequencing data. They are crucial steps in NGS data analysis pipelines to ensure the reliability and accuracy of downstream analyses. There are several other tools that can remove adapters and bad quality reads, in the end you should choose the one that best address your question or are available to you.
